@@ -17,16 +17,20 @@ from trajectory_msgs.msg import (
 )
 
 from math import pi
-
 import time
-
 import operator
+import string
 
 arm = arm.Arm()
 
 GOAL_TOLERANCE = [0.05, 0.05, 0.05, 0.05, 0.05]  #Tolerance joints must be within to report success, in radians
 
 RATIOS = [3640, 8400, 6000, 4000, 4500]  #Joint motor counts corresponding to 90 degree rotation
+
+# Assumption: Strings end with a keyword, followed only by ASCII
+# whitespace and >, which is to be stripped off.
+OUTPUT_STRIP_CHARS = string.whitespace + '>'
+
 
 def joint_to_angle(li):
     '''Reorganise waist-to-wrist ordered joint counts into alphabetical angle values for ros publishing'''
@@ -101,7 +105,8 @@ class JointTrajectoryActionServer(object):
         trajectory_points = goal.trajectory.points
         arm.write('FIND TRAJECTORY .\r\n')    #returns memory location of route TRAJECTORY if it exists in memory, else returns 0
         route_exists_check = arm.read()
-        if (route_exists_check.find('0')) <> -1:    #if FIND does not return 0, TRAJECTORY already exists in memory
+        route_exists_check = route_exists_check.strip(OUTPUT_STRIP_CHARS)
+        if (route_exists_check[-1]) <> 0:    #if FIND does not return 0, TRAJECTORY already exists in memory
             arm.write('FORGET TRAJECTORY\r\n')
         arm.write('ROUTE TRAJECTORY\r\n')    #create a new route TRAJECTORY
         arm.write('500 RESERVE\r\n')    #reserve space in memory of route points
@@ -114,7 +119,7 @@ class JointTrajectoryActionServer(object):
                 position_input += ' '
             position_input += '$JL\r\n'
             arm.write(position_input)   #sends created string to arm, teaching point in trajectory
-            arm.read()
+        print(arm.read())
         arm.write('$RUN\r\n')   #run created route
         end_time = trajectory_points[-1].time_from_start.to_sec()    #get expected time for route to complete
         time_elapsed = rospy.get_time() - start_time
