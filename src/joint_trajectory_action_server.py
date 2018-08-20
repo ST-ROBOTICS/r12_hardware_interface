@@ -41,7 +41,7 @@ def joint_to_angle(li):
 def angle_to_joint(li):
     '''Reorganise alphabetical angle values into waist-to-wrist ordered joint counts for sending to arm'''
     out = [0, 0, 0, 0, 0]
-    out[0] = int(round(-(li[3]*2*RATIOS[0]/pi)))   #joint coordinates come in alphabetical order; reoorganise and scale by joint count ratios
+    out[0] = int(round(-(li[3]*2*RATIOS[0]/pi)))   #joint coordinates come as radians, sorted by joint name in alphabetical order; reoorganise and scale by joint count ratios
     out[1] = int(round(-(li[2]*2*RATIOS[1]/pi)))
     out[2] = int(round(-(li[0]*2*RATIOS[2]/pi)))
     out[3] = int(round(-(li[1]*2*RATIOS[3]/pi)))
@@ -69,12 +69,12 @@ class JointTrajectoryActionServer(object):
         errors = map(operator.sub,
                      pos,
                      final_pos
-                     )  
+                     )  #obtains a list of differences between actual position and final desired position
         errors_tolerances = zip(errors, tolerances)
         for ele in errors_tolerances:
-            if (abs(ele[0]) > ele[1]) :
+            if (abs(ele[0]) > ele[1]) : #compares absolute angle difference from goal with tolerance for that joint, for each joint
                 return False
-        return True
+        return True    #if all joints within tolerance, goal achieved so return true
         
     def _update_feedback(self, joint_names, last_pos, time_elapsed):
         '''Updates feedback with current joint positions and returns current position as angles'''
@@ -99,43 +99,40 @@ class JointTrajectoryActionServer(object):
         start_time = rospy.get_time()
         joint_names = goal.trajectory.joint_names
         trajectory_points = goal.trajectory.points
-        arm.write('FIND TRAJECTORY .\r\n')
+        arm.write('FIND TRAJECTORY .\r\n')    #returns memory location of route TRAJECTORY if it exists in memory, else returns 0
         route_exists_check = arm.read()
-        if (route_exists_check.find('0')) <> -1:
+        if (route_exists_check.find('0')) <> -1:    #if FIND does not return 0, TRAJECTORY already exists in memory
             arm.write('FORGET TRAJECTORY\r\n')
-            print(arm.read())
-        arm.write('ROUTE TRAJECTORY\r\n')
-        print(arm.read())
-        arm.write('500 RESERVE\r\n')
-        print(arm.read())
-        joint_values = [0, 0, 0, 0, 0]
-        for point in trajectory_points:
+        arm.write('ROUTE TRAJECTORY\r\n')    #create a new route TRAJECTORY
+        arm.write('500 RESERVE\r\n')    #reserve space in memory of route points
+        joint_values = [0, 0, 0, 0, 0]    #initialise a list to hold joint values at each point in the trajectory
+        for point in trajectory_points:    #for each point in the trajectory, create a string of the form a b c d e $JL where variables are joint counts for each joint
             position_input = ''
-            joint_values = angle_to_joint(point.positions)
+            joint_values = angle_to_joint(point.positions)    #obtains joint counts from received joint angles
             for i in range (4,-1,-1):
                 position_input += str(joint_values[i])
                 position_input += ' '
             position_input += '$JL\r\n'
-            arm.write(position_input)
-            print(arm.read())
-        arm.write('$RUN\r\n')
-        end_time = trajectory_points[-1].time_from_start.to_sec()
+            arm.write(position_input)   #sends created string to arm, teaching point in trajectory
+            arm.read()
+        arm.write('$RUN\r\n')   #run created route
+        end_time = trajectory_points[-1].time_from_start.to_sec()    #get expected time for route to complete
         time_elapsed = rospy.get_time() - start_time
-        pos = trajectory_points[0].positions
+        pos = trajectory_points[0].positions    #initialises current position to starting position
+        rospy.loginfo('Started route')
         while (time_elapsed < end_time and not rospy.is_shutdown()):    #loop until timeout
             result = self._check_goal(pos, trajectory_points[-1].positions, GOAL_TOLERANCE)
-            pos = self._update_feedback(joint_names, pos, time_elapsed)
-            print(pos)
+            pos = self._update_feedback(joint_names, pos, time_elapsed)    #updates and publishes feedback, and sets pos to current position
             if result:
                 rospy.loginfo("%s: Joint Trajectory Action Succeeded" % (self._action_name))
                 self._result.error_code = self._result.SUCCESSFUL
                 self._as.set_succeeded(self._result)
-                break
+                break    #on success, finish
             self._rate.sleep()            
         
 if __name__ == '__main__':
     rospy.init_node('r12_interface')
-    port = arm.connect()
+    port = arm.connect()     #Find r12 arm and connect to port where it is located
     rospy.loginfo('Success: Connected to ${0}.'.format(port))
     server = JointTrajectoryActionServer('r12_arm_controller')
     rospy.spin()

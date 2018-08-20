@@ -17,8 +17,8 @@ OUTPUT_ENCODING = 'latin_1'
 
 # The read timeout is intentionally long, so that a complete calibration cycle
 # can happen before timing out.
-READ_TIMEOUT = 0.012
-READ_SLEEP_TIME = 0.06
+READ_TIMEOUT = 0.1
+READ_SLEEP_TIME = 0.05
 
 CMD_SUCCESS = 'OK'
 CMD_ERROR = 'ABORTED'
@@ -141,15 +141,12 @@ class Arm(object):
         time.sleep(READ_SLEEP_TIME)
         raw_out = self.ser.read(self.ser.in_waiting)
         out = raw_out.decode(OUTPUT_ENCODING)
-
         time_waiting = 0
         while len(out) == 0 or ending_in(out.strip(OUTPUT_STRIP_CHARS), RESPONSE_END_WORDS) is None:
             time.sleep(READ_SLEEP_TIME)
             time_waiting += READ_SLEEP_TIME
-
             raw_out += self.ser.read(self.ser.in_waiting)
             out = raw_out.decode(OUTPUT_ENCODING)
-
             # TODO how to handle timeouts, if they're now unexpected?
             if time_waiting >= timeout:
                 break

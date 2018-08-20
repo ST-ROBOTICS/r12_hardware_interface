@@ -16,7 +16,7 @@ state = JointState()
 
 def callback(data):
     '''Upon recieving new position data from feedback, update the position data to be published'''
-    state.position = data.feedback.actual.positions
+    state.position = data.feedback.actual.positions     #Sets the joint positions in the JointState message to the joint positions in the action feedback
     
 def joint_state_remapper():
     '''Continuously publishes the last heard position from JointTrajectoryActionFeedback to the joint_states topic'''
