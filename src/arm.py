@@ -168,7 +168,6 @@ class Arm(object):
         self.write('$')
         self.write('\r\n')
         out = self.read()
-        print(out)
         if (out.find('SPEED = ')) <> -1 :    #Strip away SPEED = NUMBER output at start of $RUN
             out = out[ (out.find('SPEED = ') + 8) :]
             for i in range (0, len(out)):
