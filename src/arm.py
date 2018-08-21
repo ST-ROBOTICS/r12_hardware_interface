@@ -154,12 +154,21 @@ class Arm(object):
             return raw_out
         return out
     
+    def stop_route(self):
+        '''Sends a command to stop the arm during the $RUN procedure'''
+        self.read()
+        self.write('S')
+        self.write('\r\n')
+        self.read()
+        return
+    
     def read_pos(self, pos):
         '''Reads arm position during $RUN and returns joint counts as an integer list, ordered upwards from waist to wrist. Takes input last known position in joint counts'''
         self.read()
         self.write('$')
         self.write('\r\n')
         out = self.read()
+        print(out)
         if (out.find('SPEED = ')) <> -1 :    #Strip away SPEED = NUMBER output at start of $RUN
             out = out[ (out.find('SPEED = ') + 8) :]
             for i in range (0, len(out)):

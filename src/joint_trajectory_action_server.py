@@ -103,6 +103,10 @@ class JointTrajectoryActionServer(object):
         start_time = rospy.get_time()
         joint_names = goal.trajectory.joint_names
         trajectory_points = goal.trajectory.points
+        print(trajectory_points)
+        if joint_to_angle(trajectory_points[0].positions) == joint_to_angle(trajectory_points[1].positions):   #given trajectory sometimes has two identical points at start of route, which causes errors
+            print('hey')
+            trajectory_points = trajectory_points[1:]
         arm.write('FIND TRAJECTORY .\r\n')    #returns memory location of route TRAJECTORY if it exists in memory, else returns 0
         route_exists_check = arm.read()
         route_exists_check = route_exists_check.strip(OUTPUT_STRIP_CHARS)
@@ -126,14 +130,21 @@ class JointTrajectoryActionServer(object):
         pos = trajectory_points[0].positions    #initialises current position to starting position
         rospy.loginfo('Started route')
         while (time_elapsed < end_time and not rospy.is_shutdown()):    #loop until timeout
+            self._rate.sleep()
+            if self._as.is_preempt_requested():
+                rospy.loginfo("%s: Joint trajectory action preempted, stopping arm" % (self._action_name))
+                arm.stop_route()   #sends stop command to arm
+                pos = self._update_feedback(joint_names, pos, time_elapsed)   #updates feedback with final position
+                self._as.set_preempted()   #cpnfirms action status as prempted and ends action
+                break                
             result = self._check_goal(pos, trajectory_points[-1].positions, GOAL_TOLERANCE)
             pos = self._update_feedback(joint_names, pos, time_elapsed)    #updates and publishes feedback, and sets pos to current position
             if result:
-                rospy.loginfo("%s: Joint Trajectory Action Succeeded" % (self._action_name))
+                rospy.loginfo("%s: Joint trajectory action succeeded" % (self._action_name))
                 self._result.error_code = self._result.SUCCESSFUL
                 self._as.set_succeeded(self._result)
                 break    #on success, finish
-            self._rate.sleep()            
+
         
 if __name__ == '__main__':
     rospy.init_node('r12_interface')
