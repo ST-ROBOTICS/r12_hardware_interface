@@ -38,19 +38,19 @@ def callback(data):
 def joint_state_remapper():
     '''Continuously publishes the last heard position from JointTrajectoryActionFeedback to the joint_states topic'''
     state.name = ['elbow_joint','hand_joint','shoulder_joint','waist_joint','wrist_joint']
-    arm.connect()
+    arm.connect()   #Initialises connection to r12 arm
     state.position = [0,0,0,0,0]
-    state.position = joint_to_angle(arm.read_pos(state.position))
-    pub = rospy.Publisher('/joint_states', JointState, queue_size=10)
+    state.position = joint_to_angle(arm.read_pos(state.position))    #Checks current position of arm and sets starting position to it
+    pub = rospy.Publisher('/joint_states', JointState, queue_size=10)    #Initialises publishing
     rospy.init_node('joint_state_remapper', anonymous=True)
     rospy.loginfo('Successful init')
     rospy.loginfo(state.position)
     rate = rospy.Rate(20)
-    rospy.Subscriber("/r12_arm_controller/follow_joint_trajectory/feedback", FollowJointTrajectoryActionFeedback, callback)
+    rospy.Subscriber("/r12_arm_controller/follow_joint_trajectory/feedback", FollowJointTrajectoryActionFeedback, callback)   #Initialises subscribing
     rospy.loginfo('Ready: now remapping joint feedback')
     while not rospy.is_shutdown():
         state.header.stamp = rospy.Duration.from_sec(rospy.get_time())
-        pub.publish(state)
+        pub.publish(state)   #While running, publish last known joint state
         rate.sleep()
         
 if __name__ == '__main__':
