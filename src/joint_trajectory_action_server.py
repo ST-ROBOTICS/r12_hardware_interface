@@ -103,9 +103,7 @@ class JointTrajectoryActionServer(object):
         start_time = rospy.get_time()
         joint_names = goal.trajectory.joint_names
         trajectory_points = goal.trajectory.points
-        print(trajectory_points)
         if joint_to_angle(trajectory_points[0].positions) == joint_to_angle(trajectory_points[1].positions):   #given trajectory sometimes has two identical points at start of route, which causes errors
-            print('hey')
             trajectory_points = trajectory_points[1:]
         arm.write('FIND TRAJECTORY .\r\n')    #returns memory location of route TRAJECTORY if it exists in memory, else returns 0
         route_exists_check = arm.read()
